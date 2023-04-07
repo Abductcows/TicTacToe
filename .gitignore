@@ -81,4 +81,5 @@ nb-configuration.xml
 ##############################
 .DS_Store
 
-# Attribution: https://gist.github.com/dedunumax/54e82214715e35439227
+## resources
+src/main/resources/*.wav
