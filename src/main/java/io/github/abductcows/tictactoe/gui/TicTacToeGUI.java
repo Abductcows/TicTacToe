@@ -142,9 +142,14 @@ public final class TicTacToeGUI {
 
     private void startMusic() {
 
+        String[] allowedFormats = {".wav", ".au", ".aiff", ".aif"};
         try (var fileStream = Files.walk(Paths.get(getClass().getResource("/").toURI()))) {
             songList = fileStream
-                .filter(p -> p.toString().endsWith(".wav"))
+                .filter(p -> {
+                    String strFormat = p.toString();
+                    for (String allowedFormat : allowedFormats) if (strFormat.endsWith(allowedFormat)) return true;
+                    return false;
+                })
                 .collect(Collectors.toList());
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
