@@ -7,7 +7,7 @@ import javax.swing.*;
 public class Application {
 
     public static void main(String[] args) {
-        int size = 3;
+        int size = 16;
 
         if (args.length > 0) {
             try {

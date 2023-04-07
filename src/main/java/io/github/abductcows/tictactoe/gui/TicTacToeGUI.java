@@ -41,12 +41,20 @@ public final class TicTacToeGUI {
     private void resetGUI() {
         if (this.frame != null) this.frame.dispose();
         this.frame = new JFrame("Tic Tac Toe");
-        frame.setSize(new Dimension(800, 800));
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int wSize = (int) (0.85 * Math.min(screenSize.width, screenSize.height));
+        frame.setSize(wSize, wSize);
 
         this.cells = generateCells();
+        int fontSize = wSize / n / 2;
+        var cellFont = new Font("Sans Serif", Font.BOLD, fontSize);
 
         var content = new JPanel(new GridLayout(n, n));
-        cells.forEach(content::add);
+        for (var cell : cells) {
+            cell.setFont(cellFont);
+            content.add(cell);
+        }
 
         frame.add(content);
         frame.setLocationRelativeTo(null);
@@ -56,13 +64,10 @@ public final class TicTacToeGUI {
     }
 
     private List<JButton> generateCells() {
-        var cellFont = new Font("Sans Serif", Font.BOLD, 46);
         var cells = Stream.generate(JButton::new).limit((long) n * n).collect(Collectors.toList());
 
         for (int i = 0, limit = cells.size(); i < limit; ++i) {
             var next = cells.get(i);
-
-            next.setFont(cellFont);
             next.setFocusable(false);
 
             final int cellIndex = i;
