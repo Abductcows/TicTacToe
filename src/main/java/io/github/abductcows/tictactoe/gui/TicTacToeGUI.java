@@ -6,10 +6,21 @@ import io.github.abductcows.tictactoe.domain.Board;
 import io.github.abductcows.tictactoe.domain.FastArbiter;
 import io.github.abductcows.tictactoe.domain.LargeScaleArbiter;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -18,6 +29,10 @@ public final class TicTacToeGUI {
 
     private JFrame frame;
     private List<JButton> cells;
+
+    private Clip audioClip = null;
+    private List<Path> songList = List.of();
+    private int currentSongIndex = 0;
 
     private Board board;
     private Arbiter arbiter;
@@ -60,8 +75,11 @@ public final class TicTacToeGUI {
         frame.setLocationRelativeTo(null);
         updateCurrentPlayerMessage();
         frame.setVisible(true);
-        frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+
+        startMusic();
     }
+
 
     private List<JButton> generateCells() {
         var cells = Stream.generate(JButton::new).limit((long) n * n).collect(Collectors.toList());
@@ -119,5 +137,108 @@ public final class TicTacToeGUI {
 
     private void updateCurrentPlayerMessage() {
         frame.setTitle("TicTacToe - " + arbiter.getCurrentPlayer() + " to play");
+    }
+
+
+    private void startMusic() {
+
+        try (var fileStream = Files.walk(Paths.get(getClass().getResource("/").toURI()))) {
+            songList = fileStream
+                .filter(p -> p.toString().endsWith(".wav"))
+                .collect(Collectors.toList());
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!songList.isEmpty()) {
+            createMusicMenu();
+            if (audioClip == null) playSong();
+        }
+    }
+
+    private void playSong() {
+        if (songList.isEmpty()) return;
+        try {
+            audioClip = AudioSystem.getClip();
+            var input = songList.get(currentSongIndex);
+            AudioInputStream inputStream = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(input.toFile())));
+            audioClip.open(inputStream);
+
+            FloatControl gainControl = (FloatControl) audioClip.getControl(FloatControl.Type.MASTER_GAIN);
+
+            float volume = 0.25f; // 30% volume
+            float dB = (float) (Math.log(volume) / Math.log(10.0) * 20.0);
+            gainControl.setValue(dB);
+
+            audioClip.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createMusicMenu() {
+
+        // Create a menu bar
+        JMenuBar menuBar = new JMenuBar();
+        // Create a "Music" menu
+        JMenu musicMenu = new JMenu("Music");
+        // Music menu items
+        JMenuItem playMenuItem = new JMenuItem("Play");
+        playMenuItem.addActionListener(e -> {
+            if (audioClip != null && !audioClip.isRunning()) {
+                audioClip.start();
+            }
+        });
+        JMenuItem pauseMenuItem = new JMenuItem("Pause");
+        pauseMenuItem.addActionListener(e -> {
+            if (audioClip != null && audioClip.isRunning()) {
+                audioClip.stop();
+            }
+        });
+        JMenuItem nextMenuItem = new JMenuItem("Next");
+        nextMenuItem.addActionListener(e -> {
+            if (audioClip == null) {
+                currentSongIndex = 0;
+                playSong();
+            } else {
+                currentSongIndex = (currentSongIndex + 1) % songList.size();
+                playCurrentSongUnconditionally();
+            }
+        });
+        JMenuItem stopMenuItem = new JMenuItem("Stop");
+        stopMenuItem.addActionListener(e -> {
+            if (audioClip != null) {
+                audioClip.stop();
+                audioClip.setMicrosecondPosition(0);
+            }
+        });
+
+        musicMenu.add(playMenuItem);
+        musicMenu.add(pauseMenuItem);
+        musicMenu.add(nextMenuItem);
+        musicMenu.add(stopMenuItem);
+
+        // Create a "Song list" menu
+        JMenu songMenu = new JMenu("Songs");
+        for (int i = 0; i < songList.size(); ++i) {
+            String songName = songList.get(i).getFileName().toString();
+            JMenuItem menuItem = new JMenuItem(songName);
+            int songIndex = i;
+            menuItem.addActionListener(e -> {
+                currentSongIndex = songIndex;
+                playCurrentSongUnconditionally();
+            });
+            songMenu.add(menuItem);
+        }
+
+        menuBar.add(musicMenu);
+        menuBar.add(songMenu);
+
+        frame.setJMenuBar(menuBar);
+    }
+
+    private void playCurrentSongUnconditionally() {
+        if (audioClip != null) audioClip.close();
+        playSong();
     }
 }
